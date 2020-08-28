@@ -24,9 +24,11 @@ export const config = {
 };
 
 const game = new Phaser.Game(config);
-let green, player, cursors, shadow, fire, ships;
+let green, player, cursors, shadow, fire, ships, score, health, gameOver, maxScore;
+let life = 1000;
 let cCounter = 1000;
 let cDown = true;
+let level = 1;
 
 function preload (){
   this.load.image('green', './assets/img/green.gif');
@@ -86,6 +88,15 @@ function preload (){
   this.load.image('ship_03', './assets/img/ship/ship(3).png');
   this.load.image('ship_04', './assets/img/ship/ship(4).png');
   this.load.image('ship_05', './assets/img/ship/ship(5).png');
+
+  this.load.spritesheet(
+    'shipDie',
+    './assets/img/ship/Breath.png',
+    {
+      frameWidth: 192,
+      frameHeight: 192,
+    }
+  );
 }
 
 function create (){
@@ -114,13 +125,6 @@ function create (){
 
   fire = this.physics.add.group();
   ships = this.physics.add.group();
-
-  ships.create(800, 200, 'ship_01')
-    .setOrigin(0.5)
-    .setScale(0.3)
-    .setDepth(1)
-    .setVelocity(0, -100)
-    .flipCounter = 0;
 
   /*
     Анімація з одного кадру
@@ -215,7 +219,7 @@ function create (){
       },
       ),
     frameRate: 10,
-    repeat: 3,
+    repeat: 2,
   });
   this.anims.create({
     key: 'fireDie',
@@ -230,19 +234,116 @@ function create (){
     repeat: 0,
   });
 
+  this.anims.create({
+    key: 'shipDie',
+    frames: this.anims.generateFrameNumbers(
+      'shipDie',
+      {
+        start: 5,
+        end: 14,
+      },
+      ),
+    frameRate: 8,
+    repeat: 0,
+  });
+
   player.anims.play('down', true);
   shadow.anims.play('down', true);
   cursors = this.input.keyboard.createCursorKeys();
 
   this.physics.add
-    .overlap(ships, fire, fireDie, null, this);
+    .overlap(ships, fire, shipDie, null, this);
+  this.physics.add
+    .overlap(ships, player, dragonHealth, null, this);
+
+  score = this.add.text(
+    20,
+    20,
+    'Score: 0',
+    {
+      fontSize: '40px',
+      fill: '#fff',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold',
+    },
+  )
+  .setShadow(1, 1, '#000000', 0)
+  .setOrigin(0)
+  .setDepth(3)
+  .setAlign('center');
+
+  maxScore = this.add.text(
+    20,
+    130,
+    `Max score: ${localStorage.getItem('savedScore') || 0}`,
+    {
+      fontSize: '30px',
+      fill: '#fff',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold',
+    },
+  )
+  .setShadow(1, 1, '#000000', 0)
+  .setOrigin(0)
+  .setDepth(3)
+  .setAlign('center');
+
+  health = this.add.text(
+    20,
+    80,
+    'Health: 5',
+    {
+      fontSize: '30px',
+      fill: '#DC143C',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold',
+    },
+  )
+  .setShadow(1, 1, '#000000', 0)
+  .setOrigin(0)
+  .setDepth(3)
+  .setAlign('center');
+
+  gameOver = this.add.text(
+    config.width / 2,
+    config.height / 2,
+    'Game over',
+    {
+      fontSize: '90px',
+      fill: '#fff',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold',
+    },
+  )
+  .setShadow(1, 1, '#000000', 0)
+  .setOrigin(0.5)
+  .setDepth(3)
+  .setAlpha(0)
+  .setAlign('center');
 }
 
 function update() {
+  health.setText(`Health: ${life}`);
+  score.setText(`Score: ${level - 1}`);
 
-  if (cCounter < 100 && cDown === false) {
+  if (ships.children.entries.length != level) {
+    while (ships.children.entries.length < level) {
+      ships.create(
+        Phaser.Math.Between(150, 1100),
+        Phaser.Math.Between(100, 600),
+        `ship_0${Phaser.Math.Between(1, 5)}`
+      )
+      .setOrigin(0.5)
+      .setScale(0.3)
+      .setDepth(1)
+      .setVelocity(0, -100)
+      .flipCounter = 0;
+    }
+  }
+
+  if (cCounter < 80 && cDown === false) {
     cDown = true;
-  } else if (cCounter <= 150 && cDown === true) {
+  } else if (cCounter <= 80 && cDown === true) {
     cCounter++;
   }
 
@@ -280,7 +381,6 @@ function update() {
   else if (cursors.down.isDown) {
     player.setVelocityY(+150);
     player.setVelocityX(0);
-    console.log("update -> player", player)
     player.anims.play('down', true);
 
     shadow.anims.play(player.anims.currentAnim.key, true);
@@ -292,7 +392,7 @@ function update() {
     player.setVelocity(0, 0);
   }
 
-  if (cursors.space.isDown && cCounter >= 150) {
+  if (cursors.space.isDown && cCounter >= 80) {
     cCounter = 0;
     cDown = false;
 
@@ -309,6 +409,41 @@ function update() {
 
   shipGoing.bind(this)(ships);
 
+  if (life <= 0) {
+    life = 0;
+    player.anims.play('shipDie', true).on(
+      'animationcomplete',
+      () => {
+        player.x = -1000;
+        player.y = -1000;
+        localStorage.setItem('savedScore', level - 1);
+        gameOver.setAlpha(1);
+      },
+      this
+    );
+  }
+}
+
+function dragonHealth(player, ship) {
+  shipDie(ship);
+  player.body.blocked.down = true
+
+    this.time.addEvent({
+      delay: 500,
+      callback: () => {
+        if (player.isTinted === true ) {
+          player.clearTint();
+        }
+        else if (player.isTinted === false ) {
+          player.setTint(0xff0000);
+        }
+
+        life--;
+      },
+      callbackScope: this,
+      loop: false,
+      repeat: 1,
+    });
 }
 
 const fireDie = () => {
@@ -323,6 +458,28 @@ const fireDie = () => {
       },
       this
     );
+}
+
+const shipDie = (ship, fires) => {
+  if (fire.children.entries[0]) {
+    fireDie();
+  }
+
+  if (ship.die === undefined) {
+    ship.setVelocity(0, 0);
+    ship.flipCounter = undefined;
+    ship.shadow.destroy();
+    ship.anims.play('shipDie', true).on(
+      'animationcomplete',
+      () => {
+        ship.destroy()
+      },
+      this
+    );
+
+    ship.die = true;
+    level++;
+  }
 }
 
 function createFireBall(addX, addY, angle, velocityX, velocityY) {
@@ -376,11 +533,10 @@ function shipGoing(ships) {
 
   for(const ship of ships.children.entries) {
     if (ship.shadow === undefined) {
-      console.log("shipGoing -> ship.shadow", ship.shadow)
 
       ship.shadow = this.physics.add.sprite(ship.x, ship.y, ship.texture.key)
       .setOrigin(0.5)
-      .setScale(ship.scale - 0.07)
+      .setScale(ship.scale - 0.1)
       .setTint(0x000000)
       .setDepth(0)
       .setAlpha(0.5);
