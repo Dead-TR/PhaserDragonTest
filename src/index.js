@@ -29,6 +29,7 @@ let life = 1000;
 let cCounter = 1000;
 let cDown = true;
 let level = 1;
+const max = localStorage.getItem('savedScore') || 0;
 
 function preload (){
   this.load.image('green', './assets/img/green.gif');
@@ -275,7 +276,7 @@ function create (){
   maxScore = this.add.text(
     20,
     130,
-    `Max score: ${localStorage.getItem('savedScore') || 0}`,
+    `Max score: ${max}`,
     {
       fontSize: '30px',
       fill: '#fff',
@@ -416,7 +417,9 @@ function update() {
       () => {
         player.x = -1000;
         player.y = -1000;
-        localStorage.setItem('savedScore', level - 1);
+        if (max < (level - 1)) {
+          localStorage.setItem('savedScore', level - 1);
+        }
         gameOver.setAlpha(1);
       },
       this
