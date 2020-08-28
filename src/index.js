@@ -329,16 +329,30 @@ function update() {
 
   if (ships.children.entries.length != level) {
     while (ships.children.entries.length < level) {
-      ships.create(
-        Phaser.Math.Between(150, 1100),
-        Phaser.Math.Between(100, 600),
-        `ship_0${Phaser.Math.Between(1, 5)}`
-      )
-      .setOrigin(0.5)
-      .setScale(0.3)
-      .setDepth(1)
-      .setVelocity(0, -100)
-      .flipCounter = 0;
+      if (player.x > config.width / 2) {
+        ships.create(
+          -100,
+          Phaser.Math.Between(100, 600),
+          `ship_0${Phaser.Math.Between(1, 5)}`
+        )
+        .setOrigin(0.5)
+        .setScale(0.3)
+        .setDepth(1)
+        .setVelocity(0, -100)
+        .flipCounter = 0;
+      }
+      else {
+        ships.create(
+          config.width + 100,
+          Phaser.Math.Between(100, 600),
+          `ship_0${Phaser.Math.Between(1, 5)}`
+        )
+        .setOrigin(0.5)
+        .setScale(0.3)
+        .setDepth(1)
+        .setVelocity(0, -100)
+        .flipCounter = 0;
+      }
     }
   }
 
